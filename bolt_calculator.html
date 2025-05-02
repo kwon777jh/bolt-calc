@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <title>볼트 사이즈 추천기 (AISC 기준)</title>
+  <style>
+    body { font-family: Arial; max-width: 700px; margin: auto; padding: 20px; }
+    label { display: block; margin-top: 10px; }
+    input, select, button { padding: 6px; margin-top: 5px; width: 100%; }
+    #result { margin-top: 20px; border-top: 1px solid #ccc; padding-top: 15px; }
+    pre { background: #f9f9f9; padding: 10px; border: 1px solid #ccc; overflow-x: auto; }
+  </style>
+</head>
+<body>
+  <h2>🔩 볼트 사이즈 추천기 (AISC 기준)</h2>
+
+  <label>인장력 (N):
+    <input type="number" id="tensileForce" required>
+  </label>
+  <label>전단력 (N):
+    <input type="number" id="shearForce" required>
+  </label>
+  <label>볼트 강도 등급:
+    <select id="grade">
+      <option value="3.6">3.6</option>
+      <option value="4.6">4.6</option>
+      <option value="5.6">5.6</option>
+      <option value="6.8">6.8</option>
+      <option value="8.8">8.8</option>
+      <option value="10.9">10.9</option>
+      <option value="12.9">12.9</option>
+    </select>
+  </label>
+
+  <button onclick="recommendBolt()">🔍 추천하기</button>
+
+  <div id="result"></div>
+
+  <script>
+    const boltData = {
+      "M6":  20.1,
+      "M8":  36.6,
+      "M10": 58,
+      "M12": 84.3,
+      "M14": 115,
+      "M16": 157,
+      "M20": 245,
+      "M24": 353
+    };
+
+    const gradeFu = {
+      "3.6": 300,
+      "4.6": 400,
+      "5.6": 500,
+      "6.8": 600,
+      "8.8": 800,
+      "10.9": 1000,
+      "12.9": 1200
+    };
+
+    function recommendBolt() {
+      const Ft = parseFloat(document.getElementById('tensileForce').value);
+      const Fv = parseFloat(document.getElementById('shearForce').value);
+      const grade = document.getElementById('grade').value;
+
+      const Fu = gradeFu[grade];
+      const shearFu = 0.6 * Fu;
+
+      let resultText = `🔎 입력값:
+- 인장력: ${Ft.toLocaleString()} N
+- 전단력: ${Fv.toLocaleString()} N
+- 볼트 강도 등급: ${grade} (Fu = ${Fu} MPa)\n\n`;
+
+      let selected = null;
+      for (const [bolt, area] of Object.entries(boltData)) {
+        const tensileCapacity = Fu * area;
+        const shearCapacity = shearFu * area;
+
+        const tensileSafety = tensileCapacity / Ft;
+        const shearSafety = shearCapacity / Fv;
+
+        if (tensileSafety >= 1.0 && shearSafety >= 1.0) {
+          selected = { bolt, area, tensileCapacity, shearCapacity, tensileSafety, shearSafety };
+          break;
+        }
+      }
+
+      if (selected) {
+        resultText += `✅ 추천 볼트: <strong>${selected.bolt}</strong> (유효 단면적: ${selected.area} mm²)\n\n` +
+          `📐 계산 결과 (AISC 기준):\n` +
+          `- 인장 허용강도: ${Math.round(selected.tensileCapacity).toLocaleString()} N\n` +
+          `- 전단 허용강도: ${Math.round(selected.shearCapacity).toLocaleString()} N\n` +
+          `- 인장 안전율: ${selected.tensileSafety.toFixed(2)} 배\n` +
+          `- 전단 안전율: ${selected.shearSafety.toFixed(2)} 배\n` +
+          `- 최소 안전율: ${Math.min(selected.tensileSafety, selected.shearSafety).toFixed(2)} 배`;
+      } else {
+        resultText += `⚠️ 적절한 볼트를 찾을 수 없습니다. 더 큰 규격이 필요합니다.`;
+      }
+
+      document.getElementById("result").innerHTML = `<pre>${resultText}</pre>`;
+    }
+  </script>
+</body>
+</html>
